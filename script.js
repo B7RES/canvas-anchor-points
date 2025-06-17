@@ -20,10 +20,25 @@ let selectedAnchor = -1;
 let oldWidth;
 let oldHeight;
 const MIN_WIDTH = 200;
-const MIN_HEIGHT = MIN_WIDTH / (img.width / img.height);
+let MIN_HEIGHT = MIN_WIDTH / (img.width / img.height);
+
+let isDraggingImage = false;
+let dragStartX = 0;
+let dragStartY = 0;
+
+const FREE_RESIZE = 0;
+const KEEP_ASPECT = 1;
+let type = FREE_RESIZE; // usare questo per passare da free resize a mantenere l'aspetto
 
 let isResizingBorder = false;
 let selectedBorder = -1; // 0: top, 1: right, 2: bottom, 3: left
+
+
+document.getElementById('toggleType').addEventListener('click', () => {
+    type = type === FREE_RESIZE ? KEEP_ASPECT : FREE_RESIZE;
+    document.getElementById('toggleType').textContent = 
+        `Mode: ${type === FREE_RESIZE ? 'Free Resize' : 'Keep Aspect'}`;
+});
 
 function checkMinSize(newWidth, newHeight) {
   if (newWidth < MIN_WIDTH) {
@@ -140,21 +155,27 @@ function hitAnchor(x, y) {
 }
 
 canvas.addEventListener("mousedown", (e) => {
-  const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
-  selectedAnchor = hitAnchor(x, y);
-  selectedBorder = hitBorder(x, y);
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    selectedAnchor = hitAnchor(x, y);
+    selectedBorder = hitBorder(x, y);
 
-  if (selectedAnchor !== -1) {
-    isDragging = true;
-    oldWidth = imageWidth;
-    oldHeight = imageHeight;
-  } else if (selectedBorder !== -1) {
-    isResizingBorder = true;
-    oldWidth = imageWidth;
-    oldHeight = imageHeight;
-  }
+    if (selectedAnchor !== -1) {
+        isDragging = true;
+        oldWidth = imageWidth;
+        oldHeight = imageHeight;
+    } else if (selectedBorder !== -1) {
+        isResizingBorder = true;
+        oldWidth = imageWidth;
+        oldHeight = imageHeight;
+    } else if (x >= imageX && x <= imageX + imageWidth && 
+               y >= imageY && y <= imageY + imageHeight) {
+        isDraggingImage = true;
+        dragStartX = x - imageX;
+        dragStartY = y - imageY;
+        canvas.style.cursor = 'move';
+    }
 });
 
 canvas.addEventListener("mousemove", (e) => {
@@ -163,6 +184,13 @@ canvas.addEventListener("mousemove", (e) => {
   const y = e.clientY - rect.top;
   const aspectRatio = img.width / img.height;
   let newWidth, newHeight;
+
+      if (isDraggingImage) {
+        imageX = x - dragStartX;
+        imageY = y - dragStartY;
+        draw();
+        return;
+    }
 
   updateCursor(x, y);
 
@@ -173,8 +201,13 @@ canvas.addEventListener("mousemove", (e) => {
       case 0: // Top-left
         const oldRight = imageX + imageWidth;
         const oldBottom = imageY + imageHeight;
-        newWidth = oldRight - x;
-        newHeight = newWidth / aspectRatio;
+        if (type === FREE_RESIZE) {
+          newWidth = oldRight - x;
+          newHeight = oldBottom - y;
+        } else {
+          newWidth = oldRight - x;
+          newHeight = newWidth / aspectRatio;
+        }
         if (checkMinSize(newWidth, newHeight)) {
           imageWidth = newWidth;
           imageHeight = newHeight;
@@ -183,8 +216,13 @@ canvas.addEventListener("mousemove", (e) => {
         }
         break;
       case 1: // Top-middle
-        newHeight = imageY + imageHeight - y;
-        newWidth = newHeight * aspectRatio;
+        if (type === FREE_RESIZE) {
+          newHeight = imageY + imageHeight - y;
+          newWidth = imageWidth;
+        } else {
+          newHeight = imageY + imageHeight - y;
+          newWidth = newHeight * aspectRatio;
+        }
         if (checkMinSize(newWidth, newHeight)) {
           imageHeight = newHeight;
           imageWidth = newWidth;
@@ -195,8 +233,13 @@ canvas.addEventListener("mousemove", (e) => {
       case 2: // Top-right
         const oldLeft = imageX;
         const oldBottom2 = imageY + imageHeight;
-        newWidth = x - oldLeft;
-        newHeight = newWidth / aspectRatio;
+        if (type === FREE_RESIZE) {
+          newWidth = x - oldLeft;
+          newHeight = oldBottom2 - y;
+        } else {
+          newWidth = x - oldLeft;
+          newHeight = newWidth / aspectRatio;
+        }
         if (checkMinSize(newWidth, newHeight)) {
           imageWidth = newWidth;
           imageHeight = newHeight;
@@ -206,8 +249,13 @@ canvas.addEventListener("mousemove", (e) => {
         break;
       case 3: // Middle-right
         const fixedLeft = imageX;
-        newWidth = x - fixedLeft;
-        newHeight = newWidth / aspectRatio;
+        if (type === FREE_RESIZE) {
+          newHeight = imageHeight;
+          newWidth = x - fixedLeft;
+        } else {
+          newWidth = x - fixedLeft;
+          newHeight = newWidth / aspectRatio;
+        }
         if (checkMinSize(newWidth, newHeight)) {
           imageWidth = newWidth;
           imageHeight = newHeight;
@@ -216,26 +264,41 @@ canvas.addEventListener("mousemove", (e) => {
         }
         break;
       case 4: // Bottom-right
-        newWidth = x - imageX;
-        newHeight = newWidth / aspectRatio;
+        if (type === FREE_RESIZE) {
+          newWidth = x - imageX;
+          newHeight = y - imageY;
+        } else {
+          newWidth = x - imageX;
+          newHeight = newWidth / aspectRatio;
+        }
         if (checkMinSize(newWidth, newHeight)) {
           imageWidth = newWidth;
           imageHeight = newHeight;
         }
         break;
       case 5: // Bottom-middle
-        newHeight = y - imageY;
-        newWidth = newHeight * aspectRatio;
+        if (type === FREE_RESIZE) {
+          newHeight = y - imageY;
+          newWidth = imageWidth;
+        } else {
+          newHeight = y - imageY;
+          newWidth = newHeight * aspectRatio;
+        }
         if (checkMinSize(newWidth, newHeight)) {
-          imageHeight = y - imageY;
-          imageWidth = imageHeight * aspectRatio;
+          imageHeight = newHeight;
+          imageWidth = newWidth;
           imageX = centerX - imageWidth / 2;
         }
         break;
       case 6: // Bottom-left
         const oldRight2 = imageX + imageWidth;
-        newWidth = oldRight2 - x;
-        newHeight = imageWidth / aspectRatio;
+        if (type === FREE_RESIZE) {
+          newWidth = oldRight2 - x;
+          newHeight = y - imageY;
+        } else {
+          newWidth = oldRight2 - x;
+          newHeight = imageWidth / aspectRatio;
+        }
         if (checkMinSize(newWidth, newHeight)) {
           imageWidth = newWidth;
           imageHeight = newHeight;
@@ -244,8 +307,13 @@ canvas.addEventListener("mousemove", (e) => {
         break;
       case 7: // Middle-left
         const fixedRight = imageX + imageWidth;
-        newWidth = fixedRight - x;
-        newHeight = imageWidth / aspectRatio;
+        if (type === FREE_RESIZE) {
+          newHeight = imageHeight;
+          newWidth = fixedRight - x;
+        } else {
+          newWidth = fixedRight - x;
+          newHeight = imageWidth / aspectRatio;
+        }
         if (checkMinSize(newWidth, newHeight)) {
           imageWidth = newWidth;
           imageHeight = newHeight;
@@ -260,8 +328,13 @@ canvas.addEventListener("mousemove", (e) => {
     const centerY = imageY + imageHeight / 2;
     switch (selectedBorder) {
       case 0: // Top border
-        newHeight = imageY + imageHeight - y;
-        newWidth = newHeight * aspectRatio;
+        if (type === FREE_RESIZE) {
+          newHeight = imageY + imageHeight - y;
+          newWidth = imageWidth;
+        } else {
+          newHeight = imageY + imageHeight - y;
+          newWidth = newHeight * aspectRatio;
+        }
         if (checkMinSize(newWidth, newHeight)) {
           imageHeight = newHeight;
           imageWidth = newWidth;
@@ -271,8 +344,13 @@ canvas.addEventListener("mousemove", (e) => {
         break;
       case 1: // Right border
         const fixedLeft = imageX;
-        newWidth = x - fixedLeft;
-        newHeight = newWidth / aspectRatio;
+        if (type === FREE_RESIZE) {
+          newWidth = x - fixedLeft;
+          newHeight = imageHeight;
+        } else {
+          newWidth = x - fixedLeft;
+          newHeight = newWidth / aspectRatio;
+        }
         if (checkMinSize(newWidth, newHeight)) {
           imageWidth = newWidth;
           imageHeight = newHeight;
@@ -281,18 +359,28 @@ canvas.addEventListener("mousemove", (e) => {
         }
         break;
       case 2: // Bottom border
-        newHeight = y - imageY;
-        newWidth = newHeight * aspectRatio;
+        if (type === FREE_RESIZE) {
+          newHeight = y - imageY;
+          newWidth = imageWidth;
+        } else {
+          newHeight = y - imageY;
+          newWidth = newHeight * aspectRatio;
+        }
         if (checkMinSize(newWidth, newHeight)) {
-          imageHeight = y - imageY;
-          imageWidth = imageHeight * aspectRatio;
+          imageHeight = newHeight;
+          imageWidth = newWidth;
           imageX = centerX - imageWidth / 2;
         }
         break;
       case 3: // Left border
         const fixedRight = imageX + imageWidth;
-        newWidth = fixedRight - x;
-        newHeight = imageWidth / aspectRatio;
+        if (type === FREE_RESIZE) {
+          newWidth = fixedRight - x;
+          newHeight = imageHeight;
+        } else {
+          newWidth = fixedRight - x;
+          newHeight = imageWidth / aspectRatio;
+        }
         if (checkMinSize(newWidth, newHeight)) {
           imageWidth = newWidth;
           imageHeight = newHeight;
@@ -344,10 +432,12 @@ function updateCursor(x, y) {
 }
 
 canvas.addEventListener("mouseup", () => {
-  isDragging = false;
-  isResizingBorder = false;
-  selectedAnchor = -1;
-  selectedBorder = -1;
+    isDragging = false;
+    isResizingBorder = false;
+    isDraggingImage = false;
+    selectedAnchor = -1;
+    selectedBorder = -1;
+    canvas.style.cursor = 'default';
   canvas.classList.remove(
     "n-resize",
     "ne-resize",
@@ -362,6 +452,8 @@ canvas.addEventListener("mouseup", () => {
 });
 
 img.onload = function () {
+  // ricalcolo min_height perche  l'immagine all'inizio non ce l'ho
+  MIN_HEIGHT = MIN_WIDTH / (img.width / img.height);
   imageX = (canvas.width - img.width) / 2;
   imageY = (canvas.height - img.height) / 2;
   imageWidth = img.width;
