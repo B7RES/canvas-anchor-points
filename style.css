@@ -6,3 +6,18 @@ body{
     align-items: center;
     display: flex;
 }
+
+
+
+#canvas {
+    cursor: default;
+}
+
+#canvas.n-resize { cursor: n-resize; }
+#canvas.ne-resize { cursor: ne-resize; }
+#canvas.e-resize { cursor: e-resize; }
+#canvas.se-resize { cursor: se-resize; }
+#canvas.s-resize { cursor: s-resize; }
+#canvas.sw-resize { cursor: sw-resize; }
+#canvas.w-resize { cursor: w-resize; }
+#canvas.nw-resize { cursor: nw-resize; }
