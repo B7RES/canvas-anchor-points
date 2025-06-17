@@ -19,9 +19,21 @@ let isDragging = false;
 let selectedAnchor = -1;
 let oldWidth;
 let oldHeight;
+const MIN_WIDTH = 200;
+const MIN_HEIGHT = MIN_WIDTH / (img.width / img.height);
 
 let isResizingBorder = false;
 let selectedBorder = -1; // 0: top, 1: right, 2: bottom, 3: left
+
+function checkMinSize(newWidth, newHeight) {
+  if (newWidth < MIN_WIDTH) {
+    return false;
+  }
+  if (newHeight < MIN_HEIGHT) {
+    return false;
+  }
+  return true;
+}
 
 function drawAnchorPoints(x, y, width, height) {
   const anchors = [
@@ -150,91 +162,143 @@ canvas.addEventListener("mousemove", (e) => {
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
   const aspectRatio = img.width / img.height;
+  let newWidth, newHeight;
 
   updateCursor(x, y);
 
   if (isDragging && selectedAnchor !== -1) {
     const centerY = imageY + imageHeight / 2;
+    const centerX = imageX + imageWidth / 2;
     switch (selectedAnchor) {
       case 0: // Top-left
         const oldRight = imageX + imageWidth;
         const oldBottom = imageY + imageHeight;
-        imageWidth = oldRight - x;
-        imageHeight = imageWidth / aspectRatio;
-        imageX = x;
-        imageY = oldBottom - imageHeight;
+        newWidth = oldRight - x;
+        newHeight = newWidth / aspectRatio;
+        if (checkMinSize(newWidth, newHeight)) {
+          imageWidth = newWidth;
+          imageHeight = newHeight;
+          imageX = x;
+          imageY = oldBottom - imageHeight;
+        }
         break;
       case 1: // Top-middle
-        const centerX = imageX + imageWidth / 2;
-        imageHeight = imageY + imageHeight - y;
-        imageWidth = imageHeight * aspectRatio;
-        imageX = centerX - imageWidth / 2;
-        imageY = y;
+        newHeight = imageY + imageHeight - y;
+        newWidth = newHeight * aspectRatio;
+        if (checkMinSize(newWidth, newHeight)) {
+          imageHeight = newHeight;
+          imageWidth = newWidth;
+          imageX = centerX - imageWidth / 2;
+          imageY = y;
+        }
         break;
       case 2: // Top-right
         const oldLeft = imageX;
         const oldBottom2 = imageY + imageHeight;
-        imageWidth = x - oldLeft;
-        imageHeight = imageWidth / aspectRatio;
-        imageX = oldLeft;
-        imageY = oldBottom2 - imageHeight;
+        newWidth = x - oldLeft;
+        newHeight = newWidth / aspectRatio;
+        if (checkMinSize(newWidth, newHeight)) {
+          imageWidth = newWidth;
+          imageHeight = newHeight;
+          imageX = oldLeft;
+          imageY = oldBottom2 - imageHeight;
+        }
         break;
       case 3: // Middle-right
         const fixedLeft = imageX;
-        imageWidth = x - fixedLeft;
-        imageHeight = imageWidth / aspectRatio;
-        imageX = fixedLeft;
-        imageY = centerY - imageHeight / 2;
+        newWidth = x - fixedLeft;
+        newHeight = newWidth / aspectRatio;
+        if (checkMinSize(newWidth, newHeight)) {
+          imageWidth = newWidth;
+          imageHeight = newHeight;
+          imageX = fixedLeft;
+          imageY = centerY - imageHeight / 2;
+        }
         break;
       case 4: // Bottom-right
-        imageWidth = x - imageX;
-        imageHeight = imageWidth / aspectRatio;
+        newWidth = x - imageX;
+        newHeight = newWidth / aspectRatio;
+        if (checkMinSize(newWidth, newHeight)) {
+          imageWidth = newWidth;
+          imageHeight = newHeight;
+        }
         break;
       case 5: // Bottom-middle
-        const centerX2 = imageX + imageWidth / 2;
-        imageHeight = y - imageY;
-        imageWidth = imageHeight * aspectRatio;
-        imageX = centerX2 - imageWidth / 2;
+        newHeight = y - imageY;
+        newWidth = newHeight * aspectRatio;
+        if (checkMinSize(newWidth, newHeight)) {
+          imageHeight = y - imageY;
+          imageWidth = imageHeight * aspectRatio;
+          imageX = centerX - imageWidth / 2;
+        }
         break;
       case 6: // Bottom-left
         const oldRight2 = imageX + imageWidth;
-        imageWidth = oldRight2 - x;
-        imageHeight = imageWidth / aspectRatio;
-        imageX = x;
+        newWidth = oldRight2 - x;
+        newHeight = imageWidth / aspectRatio;
+        if (checkMinSize(newWidth, newHeight)) {
+          imageWidth = newWidth;
+          imageHeight = newHeight;
+          imageX = x;
+        }
         break;
       case 7: // Middle-left
         const fixedRight = imageX + imageWidth;
-        imageWidth = fixedRight - x;
-        imageHeight = imageWidth / aspectRatio;
-        imageX = fixedRight - imageWidth;
-        imageY = centerY - imageHeight / 2;
+        newWidth = fixedRight - x;
+        newHeight = imageWidth / aspectRatio;
+        if (checkMinSize(newWidth, newHeight)) {
+          imageWidth = newWidth;
+          imageHeight = newHeight;
+          imageX = fixedRight - imageWidth;
+          imageY = centerY - imageHeight / 2;
+        }
         break;
     }
     draw();
   } else if (isResizingBorder && selectedBorder !== -1) {
     const centerX = imageX + imageWidth / 2;
+    const centerY = imageY + imageHeight / 2;
     switch (selectedBorder) {
       case 0: // Top border
-        const heightFromTop = imageY + imageHeight - y;
-        imageHeight = heightFromTop;
-        imageWidth = imageHeight * aspectRatio;
-        imageX = centerX - imageWidth / 2;
-        imageY = y;
+        newHeight = imageY + imageHeight - y;
+        newWidth = newHeight * aspectRatio;
+        if (checkMinSize(newWidth, newHeight)) {
+          imageHeight = newHeight;
+          imageWidth = newWidth;
+          imageX = centerX - imageWidth / 2;
+          imageY = y;
+        }
         break;
       case 1: // Right border
-        imageWidth = x - imageX;
-        imageHeight = imageWidth / aspectRatio;
+        const fixedLeft = imageX;
+        newWidth = x - fixedLeft;
+        newHeight = newWidth / aspectRatio;
+        if (checkMinSize(newWidth, newHeight)) {
+          imageWidth = newWidth;
+          imageHeight = newHeight;
+          imageX = fixedLeft;
+          imageY = centerY - imageHeight / 2;
+        }
         break;
       case 2: // Bottom border
-        imageHeight = y - imageY;
-        imageWidth = imageHeight * aspectRatio;
-        imageX = centerX - imageWidth / 2;
+        newHeight = y - imageY;
+        newWidth = newHeight * aspectRatio;
+        if (checkMinSize(newWidth, newHeight)) {
+          imageHeight = y - imageY;
+          imageWidth = imageHeight * aspectRatio;
+          imageX = centerX - imageWidth / 2;
+        }
         break;
       case 3: // Left border
         const fixedRight = imageX + imageWidth;
-        imageWidth = fixedRight - x;
-        imageHeight = imageWidth / aspectRatio;
-        imageX = x;
+        newWidth = fixedRight - x;
+        newHeight = imageWidth / aspectRatio;
+        if (checkMinSize(newWidth, newHeight)) {
+          imageWidth = newWidth;
+          imageHeight = newHeight;
+          imageX = fixedRight - imageWidth;
+          imageY = centerY - imageHeight / 2;
+        }
         break;
     }
     draw();
